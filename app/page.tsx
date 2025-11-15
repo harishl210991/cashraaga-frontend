@@ -359,22 +359,7 @@ export default function Home() {
                       ₹{fmt(summary.safe_daily_spend)}
                     </p>
                   </div>
-                </div>
-
-                <div className="text-[11px] text-slate-500">
-                  {upiInfo && (
-                    <>
-                      <span className="text-slate-300">UPI outflow:</span>{" "}
-                      ₹{fmt(upiInfo.this_month)}{" "}
-                    </>
-                  )}
-                  {emiInfo && (
-                    <>
-                      · <span className="text-slate-300">EMI load:</span>{" "}
-                      ₹{fmt(emiInfo.this_month)}
-                    </>
-                  )}
-                </div>
+                </div>            
               </>
             ) : (
               <p className="text-xs text-slate-500">
