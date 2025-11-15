@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -115,6 +115,11 @@ export default function Home() {
   const upiTop = result?.upi.top_counterparties ?? [];
   const emiByMonth = result?.emi.by_month ?? [];
 
+  const totalCategorySpend = categoryData.reduce(
+    (sum, c) => sum + c.TotalAmount,
+    0
+  );
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
     setFile(selected);
@@ -151,7 +156,7 @@ export default function Home() {
     } catch (err: any) {
       console.error(err);
       setError(
-        err.message || "Could not reach the analysis server. Try again later."
+        "Could not reach the analysis server. Please try again in a moment."
       );
     } finally {
       setLoading(false);
@@ -231,17 +236,27 @@ export default function Home() {
                 <label className="text-xs text-slate-300">
                   Bank statement file (.csv / .xlsx)
                 </label>
-                <div className="border border-dashed border-slate-700 rounded-xl bg-slate-950/50 px-3 py-3 flex flex-col md:flex-row md:items-center gap-2">
-                  <input
-                    type="file"
-                    accept=".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                    onChange={handleFileChange}
-                    className="text-[11px] md:text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[11px] file:font-medium file:bg-emerald-500 file:text-slate-950 hover:file:bg-emerald-400"
-                  />
+
+                {/* Upload + Analyze - responsive layout */}
+                <div className="border border-dashed border-slate-700 rounded-xl bg-slate-950/50 px-3 py-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="file"
+                      accept=".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                      onChange={handleFileChange}
+                      className="block w-full text-[11px] md:text-xs text-slate-300
+                                 file:mr-3 file:py-1.5 file:px-3 file:rounded-full
+                                 file:border-0 file:text-[11px] file:font-medium
+                                 file:bg-emerald-500 file:text-slate-950
+                                 hover:file:bg-emerald-400
+                                 truncate"
+                    />
+                  </div>
+
                   <button
                     type="submit"
                     disabled={loading}
-                    className="ml-auto rounded-full bg-emerald-500 px-4 py-1.5 text-[11px] font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="sm:ml-auto w-full sm:w-auto rounded-full bg-emerald-500 px-4 py-1.5 text-[11px] font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? "Analyzing…" : "Analyze"}
                   </button>
@@ -344,7 +359,7 @@ export default function Home() {
           <section className="space-y-5 md:space-y-6">
             {/* Charts row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Monthly savings line */}
+              {/* Monthly savings bar chart */}
               <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-slate-100">
@@ -364,39 +379,44 @@ export default function Home() {
                 ) : (
                   <div className="h-52">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
+                      <BarChart data={monthlyData} barCategoryGap={18}>
                         <XAxis
                           dataKey="Month"
                           tick={{ fontSize: 10, fill: "#9ca3af" }}
+                          tickLine={false}
+                          axisLine={{ stroke: "#1f2937" }}
                         />
                         <YAxis
                           tick={{ fontSize: 10, fill: "#9ca3af" }}
                           tickFormatter={(v) => fmt(v)}
+                          tickLine={false}
+                          axisLine={{ stroke: "#1f2937" }}
                         />
                         <Tooltip
+                          cursor={{ fill: "rgba(15,23,42,0.7)" }}
                           contentStyle={{
                             backgroundColor: "#020617",
                             borderRadius: 10,
                             border: "1px solid #1f2937",
                             fontSize: 11,
                           }}
-                          formatter={(value: any) => `₹${fmt(Number(value))}`}
+                          formatter={(value: any) =>
+                            `₹${fmt(Number(value))}`
+                          }
+                          labelStyle={{ color: "#e5e7eb" }}
                         />
-                        <Line
-                          type="monotone"
+                        <Bar
                           dataKey="Savings"
-                          stroke="#38bdf8"
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 4 }}
+                          radius={[8, 8, 4, 4]}
+                          fill="#38bdf8"
                         />
-                      </LineChart>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 )}
               </div>
 
-              {/* Category pie */}
+              {/* Category donut */}
               <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-slate-100">
@@ -409,40 +429,69 @@ export default function Home() {
                   </p>
                 ) : (
                   <div className="flex gap-3 md:gap-4 items-center">
-                    <div className="h-44 w-1/2">
+                    {/* Donut with center label */}
+                    <div className="relative h-44 w-1/2">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={categoryData}
                             dataKey="TotalAmount"
                             nameKey="Category"
-                            outerRadius={70}
-                            innerRadius={38}
-                            paddingAngle={1.5}
+                            innerRadius={40}
+                            outerRadius={72}
+                            paddingAngle={2}
+                            stroke="none"
                           >
                             {categoryData.map((entry, index) => (
                               <Cell
                                 key={entry.Category}
                                 fill={
-                                  CATEGORY_COLORS[index % CATEGORY_COLORS.length]
+                                  CATEGORY_COLORS[
+                                    index % CATEGORY_COLORS.length
+                                  ]
                                 }
                               />
                             ))}
                           </Pie>
                           <Tooltip
+                            cursor={{ fill: "rgba(15,23,42,0.7)" }}
                             contentStyle={{
                               backgroundColor: "#020617",
                               borderRadius: 10,
                               border: "1px solid #1f2937",
                               fontSize: 11,
                             }}
-                            formatter={(value: any, name: any) =>
-                              [`₹${fmt(Number(value))}`, name]
-                            }
+                            formatter={(value: any, name: any) => {
+                              const v = Number(value);
+                              const pct =
+                                totalCategorySpend > 0
+                                  ? (
+                                      (v / totalCategorySpend) *
+                                      100
+                                    ).toFixed(1)
+                                  : "0.0";
+                              return [
+                                `₹${fmt(v)} (${pct}%)`,
+                                name,
+                              ];
+                            }}
+                            labelStyle={{ color: "#e5e7eb" }}
                           />
                         </PieChart>
                       </ResponsiveContainer>
+
+                      {/* Center total label */}
+                      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                          Total spend
+                        </span>
+                        <span className="text-sm font-semibold text-slate-100">
+                          ₹{fmt(totalCategorySpend)}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Legend */}
                     <div className="flex-1 max-h-44 overflow-auto">
                       <ul className="space-y-1 text-[11px]">
                         {categoryData.map((cat, index) => (
@@ -476,15 +525,32 @@ export default function Home() {
               </div>
             </div>
 
-            {/* EMI / UPI small insights row (minimal text) */}
+            {/* EMI / UPI / Safe spend cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* UPI card – just values */}
               <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
                 <p className="text-[11px] text-slate-400 mb-1">
                   UPI outflow (this month)
                 </p>
+
                 <p className="text-lg font-semibold text-rose-300">
                   ₹{fmt(summary.upi_net_outflow)}
                 </p>
+
+                {summary.total_outflow !== 0 && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {(() => {
+                      const share =
+                        (Math.abs(summary.upi_net_outflow) /
+                          Math.abs(summary.total_outflow)) *
+                        100;
+                      return `~${share.toFixed(
+                        1
+                      )}% of your total spend`;
+                    })()}
+                  </p>
+                )}
+
                 {upiTop.length > 0 && (
                   <p className="mt-1 text-[11px] text-slate-500">
                     Top handle:{" "}
@@ -495,6 +561,7 @@ export default function Home() {
                 )}
               </div>
 
+              {/* EMI card */}
               <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
                 <p className="text-[11px] text-slate-400 mb-1">
                   EMI load (this month)
@@ -512,6 +579,7 @@ export default function Home() {
                 )}
               </div>
 
+              {/* Safe spend card */}
               <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
                 <p className="text-[11px] text-slate-400 mb-1">
                   Safe daily spend
@@ -520,7 +588,8 @@ export default function Home() {
                   ₹{fmt(summary.safe_daily_spend)}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  You can roughly spend this per day without touching savings.
+                  You can roughly spend this per day without touching
+                  savings.
                 </p>
               </div>
             </div>
