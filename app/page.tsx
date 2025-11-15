@@ -13,7 +13,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { useCashRaaga } from "./CashRaagaProvider";  // 👈 NEW
+import { useCashRaaga } from "./CashRaagaProvider";
 
 /* ---------- TYPES (MATCH BACKEND JSON) ---------- */
 
@@ -86,21 +86,21 @@ const fmt = (n: number | undefined) =>
    ====================================================== */
 
 export default function Home() {
-  const { analysis, setAnalysis } = useCashRaaga();       // 👈 NEW (shared store)
+  const { analysis, setAnalysis } = useCashRaaga();
 
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ApiResult | null>(
-    () => (analysis as ApiResult | null) ?? null           // 👈 use stored data initially
+    () => (analysis as ApiResult | null) ?? null
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // If provider rehydrates from localStorage after mount, sync it into page state
+  // when provider rehydrates from localStorage, sync into page state
   useEffect(() => {
-    if (analysis && !result) {
+    if (analysis) {
       setResult(analysis as ApiResult);
     }
-  }, [analysis, result]);
+  }, [analysis]);
 
   const summary = result?.summary;
   const monthlyData = result?.monthly_savings ?? [];
@@ -113,7 +113,6 @@ export default function Home() {
     0
   );
 
-  // compute growth text for current month vs previous
   const growthText =
     summary && summary.this_month
       ? (() => {
@@ -131,9 +130,9 @@ export default function Home() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
     setFile(selected);
-    setResult(null);          // clear view only when they actually choose a new file
+    setResult(null);
+    setAnalysis(null); // clear old global analysis when new file is chosen
     setError("");
-    // NOTE: we do NOT clear setAnalysis here – old result stays until new analyze finishes
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,7 +161,7 @@ export default function Home() {
       }
 
       setResult(data as ApiResult);
-      setAnalysis(data);         // 👈 persist globally + to localStorage
+      setAnalysis(data); // persist globally + localStorage
     } catch (err) {
       console.error(err);
       setError(
@@ -194,7 +193,46 @@ export default function Home() {
   /* ---------- JSX ---------- */
 
   return (
-    /* …rest of your JSX is unchanged… */
-    // (keep everything from <main> to the end as you already have)
-  );
-}
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#0f172a_0,_#020617_45%,_#000000_100%)] text-slate-50 flex justify-center px-3 py-6 md:px-6 md:py-10">
+      <div className="w-full max-w-5xl flex flex-col gap-6 md:gap-8">
+        {/* Top bar */}
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-300 text-xs font-semibold">
+              CR
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
+                  CashRaaga
+                </h1>
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 text-slate-400 uppercase">
+                  Beta
+                </span>
+              </div>
+              <p className="text-[11px] md:text-xs text-slate-400 mt-0.5">
+                Minimal, private money insights from your bank statements.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <nav className="hidden sm:flex items-center gap-1 text-[11px] bg-slate-900/70 border border-slate-800 rounded-full px-1 py-0.5">
+              <Link
+                href="/"
+                className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-200"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/advisor"
+                className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-400"
+              >
+                Can I afford this?
+              </Link>
+            </nav>
+
+            {result && (
+              <button
+                onClick={handleDownloadCsv}
+                c
