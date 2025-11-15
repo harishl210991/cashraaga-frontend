@@ -14,76 +14,52 @@ import {
   Cell,
 } from "recharts";
 
-type Summary = {
-  total_inflow: number;
-  total_outflow: number;
-  savings_total: number;
-  current_month: string | null;
-  current_month_savings: number;
-  growth_text: string;
-  upi_net_outflow: number;
-  emi_load: number;
+/* ---------- TYPES (MATCH BACKEND JSON) ---------- */
+
+type BackendSummary = {
+  inflow: number;
+  outflow: number;
+  net_savings: number;
+  this_month: {
+    month: string;
+    savings: number;
+    prev_savings: number;
+    mom_change: number;
+  };
   safe_daily_spend: number;
 };
 
 type MonthlyEntry = {
-  Month: string;
-  TotalInflow: number;
-  TotalOutflow: number;
-  Savings: number;
+  month: string;
+  signed_amount: number;
 };
 
 type CategoryEntry = {
-  Category: string;
-  TotalAmount: number;
+  category: string;
+  signed_amount: number;
 };
 
-type UpiCounterparty = {
-  Description: string;
-  TotalAmount: number;
+type UpiInfo = {
+  this_month: number;
+  top_handle: string | null;
+  total_upi: number;
 };
 
-type EmiByDesc = {
-  Description: string;
-  TotalEMI: number;
-};
-
-type EmiByMonth = {
-  Month: string;
-  TotalEMI: number;
-};
-
-type ForecastInfo = {
-  available: boolean;
-  next_month?: number;
-  delta_vs_last?: number;
-  history?: { month: string; savings: number }[];
-  future?: { step: number; predicted_savings: number }[];
-  error?: string;
-};
-
-type CleanedRow = {
-  Date: string;
-  Description: string;
-  SignedAmount: number;
-  Category: string;
+type EmiInfo = {
+  this_month: number;
+  months_tracked: number;
 };
 
 type ApiResult = {
-  summary: Summary;
-  monthly: MonthlyEntry[];
-  categories: CategoryEntry[];
-  upi: {
-    top_counterparties: UpiCounterparty[];
-  };
-  emi: {
-    by_desc: EmiByDesc[];
-    by_month: EmiByMonth[];
-  };
-  forecast: ForecastInfo;
-  cleaned_preview: CleanedRow[];
+  summary: BackendSummary;
+  monthly_savings: MonthlyEntry[];
+  category_summary: CategoryEntry[];
+  upi: UpiInfo;
+  emi: EmiInfo;
   cleaned_csv: string;
 };
+
+/* ---------- CONSTANTS & HELPERS ---------- */
 
 const CATEGORY_COLORS = [
   "#22c55e",
@@ -101,8 +77,12 @@ const CATEGORY_COLORS = [
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-const fmt = (n: number) =>
-  n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const fmt = (n: number | undefined) =>
+  (n ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+
+/* ======================================================
+   MAIN COMPONENT
+   ====================================================== */
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -110,16 +90,31 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const summary = result?.summary ?? null;
-  const monthlyData = result?.monthly ?? [];
-  const categoryData = result?.categories ?? [];
-  const upiTop = result?.upi.top_counterparties ?? [];
-  const emiByMonth = result?.emi.by_month ?? [];
+  const summary = result?.summary;
+  const monthlyData = result?.monthly_savings ?? [];
+  const categoryData = result?.category_summary ?? [];
+  const upiInfo = result?.upi;
+  const emiInfo = result?.emi;
 
   const totalCategorySpend = categoryData.reduce(
-    (sum, c) => sum + c.TotalAmount,
+    (sum, c) => sum + (c.signed_amount ?? 0),
     0
   );
+
+  // compute growth text for current month vs previous
+  const growthText =
+    summary && summary.this_month
+      ? (() => {
+          const curr = summary.this_month.savings ?? 0;
+          const prev = summary.this_month.prev_savings ?? 0;
+          if (prev === 0) return "First month tracked";
+          const pct = ((curr - prev) / Math.abs(prev)) * 100;
+          const sign = pct >= 0 ? "+" : "";
+          return `${sign}${pct.toFixed(0)}% vs last month`;
+        })()
+      : "-";
+
+  /* ---------- Handlers ---------- */
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
@@ -154,7 +149,7 @@ export default function Home() {
       }
 
       setResult(data as ApiResult);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setError(
         "Could not reach the analysis server. Please try again in a moment."
@@ -166,7 +161,10 @@ export default function Home() {
 
   const handleDownloadCsv = () => {
     if (!result?.cleaned_csv) return;
-    const blob = new Blob([result.cleaned_csv], {
+    const csv = result.cleaned_csv;
+    if (!csv || csv.trim() === "") return;
+
+    const blob = new Blob([csv], {
       type: "text/csv;charset=utf-8;",
     });
     const url = URL.createObjectURL(blob);
@@ -178,6 +176,8 @@ export default function Home() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  /* ---------- JSX ---------- */
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#0f172a_0,_#020617_45%,_#000000_100%)] text-slate-50 flex justify-center px-3 py-6 md:px-6 md:py-10">
@@ -203,33 +203,32 @@ export default function Home() {
             </div>
           </div>
 
-  <div className="flex items-center gap-2">
-    <nav className="hidden sm:flex items-center gap-1 text-[11px] bg-slate-900/70 border border-slate-800 rounded-full px-1 py-0.5">
-      <Link
-        href="/"
-        className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-200"
-      >
-        Dashboard
-      </Link>
-      <Link
-        href="/advisor"
-        className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-400"
-      >
-        Can I afford this?
-      </Link>
-    </nav>
+          <div className="flex items-center gap-2">
+            <nav className="hidden sm:flex items-center gap-1 text-[11px] bg-slate-900/70 border border-slate-800 rounded-full px-1 py-0.5">
+              <Link
+                href="/"
+                className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-200"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/advisor"
+                className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-400"
+              >
+                Can I afford this?
+              </Link>
+            </nav>
 
-    {result && (
-      <button
-        onClick={handleDownloadCsv}
-        className="hidden md:inline-flex items-center gap-2 rounded-full bg-slate-900/80 border border-slate-700 px-4 py-1.5 text-xs text-slate-100 hover:bg-slate-900"
-      >
-        ⬇ Cleaned CSV
-      </button>
-    )}
-  </div>
-</header>
-
+            {result && (
+              <button
+                onClick={handleDownloadCsv}
+                className="hidden md:inline-flex items-center gap-2 rounded-full bg-slate-900/80 border border-slate-700 px-4 py-1.5 text-xs text-slate-100 hover:bg-slate-900"
+              >
+                ⬇ Cleaned CSV
+              </button>
+            )}
+          </div>
+        </header>
 
         {/* Hero + Upload */}
         <section className="grid grid-cols-1 md:grid-cols-[1.2fr,1fr] gap-5 md:gap-6 items-start">
@@ -314,10 +313,10 @@ export default function Home() {
                     This month savings
                   </p>
                   <p className="text-2xl font-semibold text-emerald-300">
-                    ₹{fmt(summary.current_month_savings)}
+                    ₹{fmt(summary.this_month?.savings)}
                   </p>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    {summary.current_month || "-"} · {summary.growth_text}
+                    {summary.this_month?.month || "-"} · {growthText}
                   </p>
                 </div>
 
@@ -325,19 +324,19 @@ export default function Home() {
                   <div className="rounded-2xl bg-slate-950/60 border border-slate-800 px-3 py-2">
                     <p className="text-slate-400">Total inflow</p>
                     <p className="mt-1 text-slate-100 font-medium">
-                      ₹{fmt(summary.total_inflow)}
+                      ₹{fmt(summary.inflow)}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-slate-950/60 border border-slate-800 px-3 py-2">
                     <p className="text-slate-400">Total outflow</p>
                     <p className="mt-1 text-rose-300 font-medium">
-                      ₹{fmt(Math.abs(summary.total_outflow))}
+                      ₹{fmt(summary.outflow)}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-slate-950/60 border border-slate-800 px-3 py-2">
                     <p className="text-slate-400">Net savings</p>
                     <p className="mt-1 text-sky-300 font-medium">
-                      ₹{fmt(summary.savings_total)}
+                      ₹{fmt(summary.net_savings)}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-slate-950/60 border border-slate-800 px-3 py-2">
@@ -349,10 +348,18 @@ export default function Home() {
                 </div>
 
                 <div className="text-[11px] text-slate-500">
-                  <span className="text-slate-300">UPI outflow:</span>{" "}
-                  ₹{fmt(summary.upi_net_outflow)} ·{" "}
-                  <span className="text-slate-300">EMI load:</span>{" "}
-                  ₹{fmt(summary.emi_load)}
+                  {upiInfo && (
+                    <>
+                      <span className="text-slate-300">UPI outflow:</span>{" "}
+                      ₹{fmt(upiInfo.this_month)}{" "}
+                    </>
+                  )}
+                  {emiInfo && (
+                    <>
+                      · <span className="text-slate-300">EMI load:</span>{" "}
+                      ₹{fmt(emiInfo.this_month)}
+                    </>
+                  )}
                 </div>
               </>
             ) : (
@@ -384,12 +391,6 @@ export default function Home() {
                   <h3 className="text-sm font-medium text-slate-100">
                     Monthly savings
                   </h3>
-                  {result.forecast?.available && (
-                    <span className="text-[11px] text-emerald-300">
-                      Next month · ₹
-                      {fmt(result.forecast.next_month || 0)}
-                    </span>
-                  )}
                 </div>
                 {monthlyData.length === 0 ? (
                   <p className="text-xs text-slate-500">
@@ -400,7 +401,7 @@ export default function Home() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={monthlyData} barCategoryGap={18}>
                         <XAxis
-                          dataKey="Month"
+                          dataKey="month"
                           tick={{ fontSize: 10, fill: "#9ca3af" }}
                           tickLine={false}
                           axisLine={{ stroke: "#1f2937" }}
@@ -425,7 +426,7 @@ export default function Home() {
                           labelStyle={{ color: "#e5e7eb" }}
                         />
                         <Bar
-                          dataKey="Savings"
+                          dataKey="signed_amount"
                           radius={[8, 8, 4, 4]}
                           fill="#38bdf8"
                         />
@@ -454,8 +455,8 @@ export default function Home() {
                         <PieChart>
                           <Pie
                             data={categoryData}
-                            dataKey="TotalAmount"
-                            nameKey="Category"
+                            dataKey="signed_amount"
+                            nameKey="category"
                             innerRadius={40}
                             outerRadius={72}
                             paddingAngle={2}
@@ -463,7 +464,7 @@ export default function Home() {
                           >
                             {categoryData.map((entry, index) => (
                               <Cell
-                                key={entry.Category}
+                                key={entry.category}
                                 fill={
                                   CATEGORY_COLORS[
                                     index % CATEGORY_COLORS.length
@@ -489,10 +490,7 @@ export default function Home() {
                                       100
                                     ).toFixed(1)
                                   : "0.0";
-                              return [
-                                `₹${fmt(v)} (${pct}%)`,
-                                name,
-                              ];
+                              return [`₹${fmt(v)} (${pct}%)`, name];
                             }}
                             labelStyle={{ color: "#e5e7eb" }}
                           />
@@ -515,7 +513,7 @@ export default function Home() {
                       <ul className="space-y-1 text-[11px]">
                         {categoryData.map((cat, index) => (
                           <li
-                            key={cat.Category}
+                            key={cat.category}
                             className="flex items-center justify-between"
                           >
                             <span className="flex items-center gap-2">
@@ -529,11 +527,11 @@ export default function Home() {
                                 }}
                               />
                               <span className="text-slate-100">
-                                {cat.Category}
+                                {cat.category}
                               </span>
                             </span>
                             <span className="text-slate-400">
-                              ₹{fmt(cat.TotalAmount)}
+                              ₹{fmt(cat.signed_amount)}
                             </span>
                           </li>
                         ))}
@@ -551,30 +549,27 @@ export default function Home() {
                 <p className="text-[11px] text-slate-400 mb-1">
                   UPI outflow (this month)
                 </p>
-
                 <p className="text-lg font-semibold text-rose-300">
-                  ₹{fmt(summary.upi_net_outflow)}
+                  ₹{fmt(upiInfo?.this_month)}
                 </p>
 
-                {summary.total_outflow !== 0 && (
+                {upiInfo && summary && summary.outflow !== 0 && (
                   <p className="mt-1 text-[11px] text-slate-500">
                     {(() => {
                       const share =
-                        (Math.abs(summary.upi_net_outflow) /
-                          Math.abs(summary.total_outflow)) *
+                        ((upiInfo.this_month ?? 0) /
+                          Math.abs(summary.outflow || 1)) *
                         100;
-                      return `~${share.toFixed(
-                        1
-                      )}% of your total spend`;
+                      return `~${share.toFixed(1)}% of your total spend`;
                     })()}
                   </p>
                 )}
 
-                {upiTop.length > 0 && (
+                {upiInfo?.top_handle && (
                   <p className="mt-1 text-[11px] text-slate-500">
                     Top handle:{" "}
                     <span className="text-slate-200">
-                      {upiTop[0].Description}
+                      {upiInfo.top_handle}
                     </span>
                   </p>
                 )}
@@ -586,13 +581,13 @@ export default function Home() {
                   EMI load (this month)
                 </p>
                 <p className="text-lg font-semibold text-rose-300">
-                  ₹{fmt(summary.emi_load)}
+                  ₹{fmt(emiInfo?.this_month)}
                 </p>
-                {emiByMonth.length > 0 && (
+                {emiInfo && (
                   <p className="mt-1 text-[11px] text-slate-500">
                     EMI months tracked:{" "}
                     <span className="text-slate-200">
-                      {emiByMonth.length}
+                      {emiInfo.months_tracked}
                     </span>
                   </p>
                 )}
@@ -607,69 +602,25 @@ export default function Home() {
                   ₹{fmt(summary.safe_daily_spend)}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  You can roughly spend this per day without touching
-                  savings.
+                  You can roughly spend this per day without touching savings.
                 </p>
               </div>
             </div>
 
-            {/* Cleaned preview table */}
+            {/* Transactions area – placeholder (backend doesn't send rows yet) */}
             <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-slate-100">
                   Latest transactions (cleaned)
                 </h3>
                 <span className="text-[11px] text-slate-500">
-                  {result.cleaned_preview.length} rows shown
+                  Coming soon
                 </span>
               </div>
-              {result.cleaned_preview.length === 0 ? (
-                <p className="text-xs text-slate-500">
-                  No rows after cleaning filter.
-                </p>
-              ) : (
-                <div className="overflow-auto max-h-72 text-xs">
-                  <table className="w-full border-collapse">
-                    <thead className="bg-slate-950/80 sticky top-0 z-10">
-                      <tr className="text-slate-400">
-                        <th className="text-left py-2 pr-2 border-b border-slate-800 text-[11px] font-normal">
-                          Date
-                        </th>
-                        <th className="text-left py-2 pr-2 border-b border-slate-800 text-[11px] font-normal">
-                          Description
-                        </th>
-                        <th className="text-right py-2 pr-2 border-b border-slate-800 text-[11px] font-normal">
-                          Amount
-                        </th>
-                        <th className="text-left py-2 border-b border-slate-800 text-[11px] font-normal">
-                          Category
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.cleaned_preview.map((row, idx) => (
-                        <tr
-                          key={idx}
-                          className="border-b border-slate-800/60 last:border-b-0"
-                        >
-                          <td className="py-1.5 pr-2 text-slate-300">
-                            {row.Date}
-                          </td>
-                          <td className="py-1.5 pr-2 text-slate-300">
-                            {row.Description}
-                          </td>
-                          <td className="py-1.5 pr-2 text-right">
-                            ₹{fmt(row.SignedAmount)}
-                          </td>
-                          <td className="py-1.5 text-slate-300">
-                            {row.Category}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <p className="text-xs text-slate-500">
+                In a future update, this section will show a cleaned, searchable
+                list of your recent transactions from the statement you upload.
+              </p>
             </div>
           </section>
         )}
