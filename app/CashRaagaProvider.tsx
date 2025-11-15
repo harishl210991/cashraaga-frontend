@@ -23,18 +23,6 @@ export function CashRaagaProvider({ children }: { children: ReactNode }) {
   const [analysis, setAnalysisState] = useState<any | null>(null);
 
   // Rehydrate from localStorage so data survives navigation / refresh
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("cashraaga-analysis");
-    if (stored) {
-      try {
-        setAnalysisState(JSON.parse(stored));
-      } catch {
-        window.localStorage.removeItem("cashraaga-analysis");
-      }
-    }
-  }, []);
-
   const setAnalysis = (data: any | null) => {
     setAnalysisState(data);
     if (typeof window === "undefined") return;
