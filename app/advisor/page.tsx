@@ -29,10 +29,20 @@ export default function AdvisorPage() {
   useEffect(() => {
     if (!analysis) return;
 
-    const inflow = analysis?.summary?.inflow ?? 0;
-    const emiThisMonth = analysis?.emi?.this_month ?? 0;
+    const inflow: number = analysis?.summary?.inflow ?? 0;
+    const emiThisMonth: number = analysis?.emi?.this_month ?? 0;
 
-    setIncome((prev) => (prev || !inflow ? prev : fmt(inflow)));
+    // number of months we have history for
+    const monthsCount: number = analysis?.monthly_savings?.length ?? 0;
+
+    // if we have multiple months, infer avg monthly take-home
+    const avgMonthlyIncome =
+      monthsCount > 0 ? Math.round(inflow / monthsCount) : inflow;
+
+    // only auto-fill if the user hasn't typed anything yet
+    setIncome((prev) =>
+      prev || !avgMonthlyIncome ? prev : fmt(avgMonthlyIncome)
+    );
     setExistingEmi((prev) =>
       prev || !emiThisMonth ? prev : fmt(emiThisMonth)
     );
