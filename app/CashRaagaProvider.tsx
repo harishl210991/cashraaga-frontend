@@ -9,7 +9,6 @@ import React, {
 } from "react";
 
 type CashRaagaContextType = {
-  // We store the full API result object here
   analysis: any | null;
   setAnalysis: (data: any | null) => void;
 };
@@ -52,10 +51,4 @@ export function CashRaagaProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useCashRaaga() {
-  const ctx = useContext(CashRaagaContext);
-  if (!ctx) {
-    throw new Error("useCashRaaga must be used within CashRaagaProvider");
-  }
-  return ctx;
-}
+export function useCashRaaga()
