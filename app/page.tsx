@@ -203,15 +203,33 @@ export default function Home() {
             </div>
           </div>
 
-          {result && (
-            <button
-              onClick={handleDownloadCsv}
-              className="hidden md:inline-flex items-center gap-2 rounded-full bg-slate-900/80 border border-slate-700 px-4 py-1.5 text-xs text-slate-100 hover:bg-slate-900"
-            >
-              ⬇ Cleaned CSV
-            </button>
-          )}
-        </header>
+  <div className="flex items-center gap-2">
+    <nav className="hidden sm:flex items-center gap-1 text-[11px] bg-slate-900/70 border border-slate-800 rounded-full px-1 py-0.5">
+      <Link
+        href="/"
+        className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-200"
+      >
+        Dashboard
+      </Link>
+      <Link
+        href="/advisor"
+        className="px-3 py-1 rounded-full hover:bg-slate-800 text-slate-400"
+      >
+        Can I afford this?
+      </Link>
+    </nav>
+
+    {result && (
+      <button
+        onClick={handleDownloadCsv}
+        className="hidden md:inline-flex items-center gap-2 rounded-full bg-slate-900/80 border border-slate-700 px-4 py-1.5 text-xs text-slate-100 hover:bg-slate-900"
+      >
+        ⬇ Cleaned CSV
+      </button>
+    )}
+  </div>
+</header>
+
 
         {/* Hero + Upload */}
         <section className="grid grid-cols-1 md:grid-cols-[1.2fr,1fr] gap-5 md:gap-6 items-start">
