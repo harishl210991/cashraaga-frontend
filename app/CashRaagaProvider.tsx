@@ -13,10 +13,12 @@ type CashRaagaContextType = {
   setAnalysis: (data: any | null) => void;
 };
 
+// NOTE: this is a *named* context, not default export
 const CashRaagaContext = createContext<CashRaagaContextType | undefined>(
   undefined
 );
 
+// 👇 named export 1
 export function CashRaagaProvider({ children }: { children: ReactNode }) {
   const [analysis, setAnalysisState] = useState<any | null>(null);
 
@@ -51,4 +53,11 @@ export function CashRaagaProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useCashRaaga()
+// 👇 named export 2 (this is what page.tsx & advisor/page.tsx import)
+export function useCashRaaga() {
+  const ctx = useContext(CashRaagaContext);
+  if (!ctx) {
+    throw new Error("useCashRaaga must be used within CashRaagaProvider");
+  }
+  return ctx;
+}
