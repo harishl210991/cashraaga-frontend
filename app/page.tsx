@@ -13,7 +13,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { useCashRaaga } from "./CashRaagaProvider";
+import { useCashRaaga, FutureBlock as FutureBlockType } from "./CashRaagaProvider";
 import FutureBlock from "./components/FutureBlock";
 
 /* ---------- TYPES (MATCH BACKEND JSON) ---------- */
@@ -59,6 +59,7 @@ type ApiResult = {
   upi: UpiInfo;
   emi: EmiInfo;
   cleaned_csv: string;
+  future_block?: FutureBlockType; // carried along for context/FutureBlock UI
 };
 
 /* ---------- CONSTANTS & HELPERS ---------- */
@@ -96,7 +97,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // sync provider -> local page state
+  // when provider has analysis, sync into local state
   useEffect(() => {
     if (analysis) {
       setResult(analysis as ApiResult);
@@ -170,19 +171,20 @@ export default function Home() {
 
       if (!res.ok) {
         throw new Error(
-          (data && typeof data.error === "string" && data.error) ||
+          (data && typeof data.detail === "string" && data.detail) ||
+            (data && typeof data.error === "string" && data.error) ||
             `Backend error (status ${res.status})`
         );
       }
 
       setResult(data as ApiResult);
-      setAnalysis(data); // persist in context for advisor page + FutureBlock
+      setAnalysis(data); // persist globally for advisor & future block
     } catch (err: any) {
       console.error("Analyze error:", err);
       setError(
         typeof err?.message === "string"
           ? err.message
-          : "Could not reach the analysis server. Please try again in a moment."
+          : "Could not reach the analysis server. Please try again."
       );
     } finally {
       setLoading(false);
@@ -396,99 +398,39 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Analytics: only if we have a result */}
+        {/* Analytics + Future block */}
         {result && summary && (
-          <section className="space-y-5 md:space-y-6">
-            {/* Charts row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Monthly savings bar chart */}
-              <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-slate-100">
-                    Monthly savings
-                  </h3>
-                </div>
-                {monthlyData.length === 0 ? (
-                  <p className="text-xs text-slate-500">
-                    Not enough history to plot.
-                  </p>
-                ) : (
-                  <div className="h-52">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={monthlyData} barCategoryGap={18}>
-                        <XAxis
-                          dataKey="month"
-                          tick={{ fontSize: 10, fill: "#9ca3af" }}
-                          tickLine={false}
-                          axisLine={{ stroke: "#1f2937" }}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 10, fill: "#9ca3af" }}
-                          tickFormatter={(v) => fmt(v)}
-                          tickLine={false}
-                          axisLine={{ stroke: "#1f2937" }}
-                        />
-                        <Tooltip
-                          cursor={{ fill: "rgba(15,23,42,0.7)" }}
-                          contentStyle={{
-                            backgroundColor: "#020617",
-                            borderRadius: 10,
-                            border: "1px solid #1f2937",
-                            fontSize: 11,
-                          }}
-                          formatter={(value: any) =>
-                            `₹${fmt(Number(value))}`
-                          }
-                          labelStyle={{ color: "#e5e7eb" }}
-                        />
-                        <Bar
-                          dataKey="signed_amount"
-                          radius={[8, 8, 4, 4]}
-                          fill="#38bdf8"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+          <>
+            <section className="space-y-5 md:space-y-6">
+              {/* Charts row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Monthly savings bar chart */}
+                <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-slate-100">
+                      Monthly savings
+                    </h3>
                   </div>
-                )}
-              </div>
-
-              {/* Category donut */}
-              <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-slate-100">
-                    Where your money goes
-                  </h3>
-                </div>
-                {categoryData.length === 0 ? (
-                  <p className="text-xs text-slate-500">
-                    No categories detected.
-                  </p>
-                ) : (
-                  <div className="flex gap-3 md:gap-4 items-center">
-                    {/* Donut with center label */}
-                    <div className="relative h-44 w-1/2">
+                  {monthlyData.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      Not enough history to plot.
+                    </p>
+                  ) : (
+                    <div className="h-52">
                       <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={categoryData}
-                            dataKey="signed_amount"
-                            nameKey="category"
-                            innerRadius={40}
-                            outerRadius={72}
-                            paddingAngle={2}
-                            stroke="none"
-                          >
-                            {categoryData.map((entry, index) => (
-                              <Cell
-                                key={entry.category}
-                                fill={
-                                  CATEGORY_COLORS[
-                                    index % CATEGORY_COLORS.length
-                                  ]
-                                }
-                              />
-                            ))}
-                          </Pie>
+                        <BarChart data={monthlyData} barCategoryGap={18}>
+                          <XAxis
+                            dataKey="month"
+                            tick={{ fontSize: 10, fill: "#9ca3af" }}
+                            tickLine={false}
+                            axisLine={{ stroke: "#1f2937" }}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 10, fill: "#9ca3af" }}
+                            tickFormatter={(v) => fmt(v)}
+                            tickLine={false}
+                            axisLine={{ stroke: "#1f2937" }}
+                          />
                           <Tooltip
                             cursor={{ fill: "rgba(15,23,42,0.7)" }}
                             contentStyle={{
@@ -497,151 +439,211 @@ export default function Home() {
                               border: "1px solid #1f2937",
                               fontSize: 11,
                             }}
-                            formatter={(value: any, name: any) => {
-                              const v = Number(value);
-                              const pct =
-                                totalCategorySpend > 0
-                                  ? (
-                                      (v / totalCategorySpend) *
-                                      100
-                                    ).toFixed(1)
-                                  : "0.0";
-                              return [`₹${fmt(v)} (${pct}%)`, name];
-                            }}
+                            formatter={(value: any) =>
+                              `₹${fmt(Number(value))}`
+                            }
                             labelStyle={{ color: "#e5e7eb" }}
                           />
-                        </PieChart>
+                          <Bar
+                            dataKey="signed_amount"
+                            radius={[8, 8, 4, 4]}
+                            fill="#38bdf8"
+                          />
+                        </BarChart>
                       </ResponsiveContainer>
-
-                      {/* Center total label */}
-                      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                        <span className="text-[10px] uppercase tracking-wide text-slate-500">
-                          Total spend
-                        </span>
-                        <span className="text-sm font-semibold text-slate-100">
-                          ₹{fmt(totalCategorySpend)}
-                        </span>
-                      </div>
                     </div>
+                  )}
+                </div>
 
-                    {/* Legend */}
-                    <div className="flex-1 max-h-44 overflow-auto">
-                      <ul className="space-y-1 text-[11px]">
-                        {categoryData.map((cat, index) => (
-                          <li
-                            key={cat.category}
-                            className="flex items-center justify-between"
-                          >
-                            <span className="flex items-center gap-2">
-                              <span
-                                className="h-2.5 w-2.5 rounded-full"
-                                style={{
-                                  backgroundColor:
+                {/* Category donut */}
+                <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-slate-100">
+                      Where your money goes
+                    </h3>
+                  </div>
+                  {categoryData.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      No categories detected.
+                    </p>
+                  ) : (
+                    <div className="flex gap-3 md:gap-4 items-center">
+                      {/* Donut with center label */}
+                      <div className="relative h-44 w-1/2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={categoryData}
+                              dataKey="signed_amount"
+                              nameKey="category"
+                              innerRadius={40}
+                              outerRadius={72}
+                              paddingAngle={2}
+                              stroke="none"
+                            >
+                              {categoryData.map((entry, index) => (
+                                <Cell
+                                  key={entry.category}
+                                  fill={
                                     CATEGORY_COLORS[
                                       index % CATEGORY_COLORS.length
-                                    ],
-                                }}
-                              />
-                              <span className="text-slate-100">
-                                {cat.category}
+                                    ]
+                                  }
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              cursor={{ fill: "rgba(15,23,42,0.7)" }}
+                              contentStyle={{
+                                backgroundColor: "#020617",
+                                borderRadius: 10,
+                                border: "1px solid #1f2937",
+                                fontSize: 11,
+                              }}
+                              formatter={(value: any, name: any) => {
+                                const v = Number(value);
+                                const pct =
+                                  totalCategorySpend > 0
+                                    ? (
+                                        (v / totalCategorySpend) *
+                                        100
+                                      ).toFixed(1)
+                                    : "0.0";
+                                return [`₹${fmt(v)} (${pct}%)`, name];
+                              }}
+                              labelStyle={{ color: "#e5e7eb" }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+
+                        {/* Center total label */}
+                        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                          <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                            Total spend
+                          </span>
+                          <span className="text-sm font-semibold text-slate-100">
+                            ₹{fmt(totalCategorySpend)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Legend */}
+                      <div className="flex-1 max-h-44 overflow-auto">
+                        <ul className="space-y-1 text-[11px]">
+                          {categoryData.map((cat, index) => (
+                            <li
+                              key={cat.category}
+                              className="flex items-center justify-between"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{
+                                    backgroundColor:
+                                      CATEGORY_COLORS[
+                                        index % CATEGORY_COLORS.length
+                                      ],
+                                  }}
+                                />
+                                <span className="text-slate-100">
+                                  {cat.category}
+                                </span>
                               </span>
-                            </span>
-                            <span className="text-slate-400">
-                              ₹{fmt(cat.signed_amount)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                              <span className="text-slate-400">
+                                ₹{fmt(cat.signed_amount)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* EMI / UPI / Safe spend cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* UPI card */}
-              <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
-                <p className="text-[11px] text-slate-400 mb-1">
-                  UPI outflow (this month)
-                </p>
-                <p className="text-lg font-semibold text-rose-300">
-                  ₹{fmt(upiInfo?.this_month)}
-                </p>
-
-                {upiInfo && summary && summary.outflow !== 0 && (
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {(() => {
-                      const share =
-                        ((upiInfo.this_month ?? 0) /
-                          Math.abs(summary.outflow || 1)) *
-                        100;
-                      return `~${share.toFixed(1)}% of your total spend`;
-                    })()}
+              {/* EMI / UPI / Safe spend cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* UPI card */}
+                <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
+                  <p className="text-[11px] text-slate-400 mb-1">
+                    UPI outflow (this month)
                   </p>
-                )}
-
-                {upiInfo?.top_handle && (
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    Top handle:{" "}
-                    <span className="text-slate-200">
-                      {upiInfo.top_handle}
-                    </span>
+                  <p className="text-lg font-semibold text-rose-300">
+                    ₹{fmt(upiInfo?.this_month)}
                   </p>
-                )}
-              </div>
 
-              {/* EMI card */}
-              <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
-                <p className="text-[11px] text-slate-400 mb-1">
-                  EMI load (this month)
-                </p>
-                <p className="text-lg font-semibold text-rose-300">
-                  ₹{fmt(emiInfo?.this_month)}
-                </p>
-                {emiInfo && (
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    EMI months tracked:{" "}
-                    <span className="text-slate-200">
-                      {emiInfo.months_tracked}
-                    </span>
+                  {upiInfo && summary && summary.outflow !== 0 && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {(() => {
+                        const share =
+                          ((upiInfo.this_month ?? 0) /
+                            Math.abs(summary.outflow || 1)) *
+                          100;
+                        return `~${share.toFixed(1)}% of your total spend`;
+                      })()}
+                    </p>
+                  )}
+
+                  {upiInfo?.top_handle && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Top handle:{" "}
+                      <span className="text-slate-200">
+                        {upiInfo.top_handle}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* EMI card */}
+                <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
+                  <p className="text-[11px] text-slate-400 mb-1">
+                    EMI load (this month)
                   </p>
-                )}
+                  <p className="text-lg font-semibold text-rose-300">
+                    ₹{fmt(emiInfo?.this_month)}
+                  </p>
+                  {emiInfo && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      EMI months tracked:{" "}
+                      <span className="text-slate-200">
+                        {emiInfo.months_tracked}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Safe spend card */}
+                <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
+                  <p className="text-[11px] text-slate-400 mb-1">
+                    Safe daily spend
+                  </p>
+                  <p className="text-lg font-semibold text-amber-300">
+                    ₹{fmt(summary.safe_daily_spend)}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    You can roughly spend this per day without touching savings.
+                  </p>
+                </div>
               </div>
 
-              {/* Safe spend card */}
-              <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4">
-                <p className="text-[11px] text-slate-400 mb-1">
-                  Safe daily spend
-                </p>
-                <p className="text-lg font-semibold text-amber-300">
-                  ₹{fmt(summary.safe_daily_spend)}
-                </p>
-                <p className="mt-1 text-[11px] text-slate-500">
-                  You can roughly spend this per day without touching savings.
+              {/* Transactions placeholder */}
+              <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium text-slate-100">
+                    Latest transactions (cleaned)
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500">
+                  In a future update, this section will show a cleaned,
+                  searchable list of your recent transactions from the statement
+                  you upload.
                 </p>
               </div>
-            </div>
+            </section>
 
-            {/* 🔮 ML Predictions – Block 2: The Future */}
+            {/* 🔮 Future predictions block */}
             <FutureBlock />
-
-            {/* Transactions placeholder */}
-            <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-100">
-                  Latest transactions (cleaned)
-                </h3>
-                <span className="text-[11px] text-slate-500">
-                  Coming soon
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                In a future update, this section will show a cleaned, searchable
-                list of your recent transactions from the statement you upload.
-              </p>
-            </div>
-          </section>
+          </>
         )}
       </div>
     </main>
