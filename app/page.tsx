@@ -135,8 +135,9 @@ export default function Home() {
     setError("");
   };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+      const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!file) {
       setError("Upload a statement file first.");
       return;
@@ -161,17 +162,21 @@ export default function Home() {
       try {
         data = await res.json();
       } catch {
-        // if backend returns non-JSON or nothing
-        throw new Error(`Could not parse server response (status ${res.status})`);
+        throw new Error(
+          `Could not parse server response (status ${res.status})`
+        );
       }
 
       if (!res.ok) {
-        // show backend error text if it exists
         throw new Error(
-          data?.error || `Backend error (status ${res.status})`
+          (data && typeof data.error === "string" && data.error) ||
+            `Backend error (status ${res.status})`
         );
-    
+      }
+
       setResult(data as ApiResult);
+      // if you're using the global context:
+      // setAnalysis(data);
     } catch (err: any) {
       console.error("Analyze error:", err);
       setError(
@@ -183,7 +188,6 @@ export default function Home() {
       setLoading(false);
     }
   };
-
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.error || "Backend error");
