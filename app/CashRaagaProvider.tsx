@@ -20,11 +20,18 @@ type RiskyCategory = {
   baseline_amount: number;
 };
 
+export type FutureDiagnostics = {
+  safe_monthly_limit: number;
+  projected_month_spend: number;
+  current_month_spend: number;
+};
+
 export type FutureBlock = {
   predicted_eom_savings: number;
   predicted_eom_range: [number, number];
   overspend_risk: OverspendRisk;
   risky_categories: RiskyCategory[];
+  diagnostics?: FutureDiagnostics; // <-- ADDED
 };
 
 export type ThisMonthSummary = {
@@ -70,7 +77,7 @@ export type AnalysisResult = {
   monthly_savings: MonthlySaving[];
   category_summary: CategorySummary[];
   cleaned_csv: string;
-  future_block?: FutureBlock; // optional for safety
+  future_block?: FutureBlock; // optional
 };
 
 /* ---------- CONTEXT ---------- */
@@ -84,7 +91,7 @@ const CashRaagaContext = createContext<CashRaagaContextType | undefined>(
   undefined
 );
 
-/* ---------- PROVIDER (NO localStorage) ---------- */
+/* ---------- PROVIDER ---------- */
 
 export function CashRaagaProvider({ children }: { children: ReactNode }) {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
