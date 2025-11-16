@@ -96,7 +96,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // when provider rehydrates from localStorage, sync into page state
+  // sync provider -> local page state
   useEffect(() => {
     if (analysis) {
       setResult(analysis as ApiResult);
@@ -176,7 +176,7 @@ export default function Home() {
       }
 
       setResult(data as ApiResult);
-      setAnalysis(data); // persist globally + localStorage (for advisor page)
+      setAnalysis(data); // persist in context for advisor page + FutureBlock
     } catch (err: any) {
       console.error("Analyze error:", err);
       setError(
@@ -622,6 +622,9 @@ export default function Home() {
                 </p>
               </div>
             </div>
+
+            {/* 🔮 ML Predictions – Block 2: The Future */}
+            <FutureBlock />
 
             {/* Transactions placeholder */}
             <div className="rounded-3xl bg-slate-900/70 border border-slate-800 p-4 md:p-5">
