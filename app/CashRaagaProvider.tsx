@@ -3,7 +3,6 @@
 import React, {
   createContext,
   useContext,
-  useEffect,
   useState,
   ReactNode,
 } from "react";
@@ -71,7 +70,7 @@ export type AnalysisResult = {
   monthly_savings: MonthlySaving[];
   category_summary: CategorySummary[];
   cleaned_csv: string;
-  future_block?: FutureBlock; // 👈 new ML block from backend (optional for safety)
+  future_block?: FutureBlock; // optional for safety
 };
 
 /* ---------- CONTEXT ---------- */
@@ -85,36 +84,10 @@ const CashRaagaContext = createContext<CashRaagaContextType | undefined>(
   undefined
 );
 
-/* ---------- PROVIDER ---------- */
+/* ---------- PROVIDER (NO localStorage) ---------- */
 
 export function CashRaagaProvider({ children }: { children: ReactNode }) {
-  const [analysis, setAnalysisState] = useState<AnalysisResult | null>(null);
-
-  // Rehydrate from localStorage so data survives navigation / refresh
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("cashraaga-analysis");
-    if (!stored) return;
-
-    try {
-      const parsed = JSON.parse(stored) as AnalysisResult;
-      setAnalysisState(parsed);
-    } catch (err) {
-      console.error("Failed to parse cached CashRaaga analysis", err);
-      window.localStorage.removeItem("cashraaga-analysis");
-    }
-  }, []);
-
-  const setAnalysis = (data: AnalysisResult | null) => {
-    setAnalysisState(data);
-    if (typeof window === "undefined") return;
-
-    if (data) {
-      window.localStorage.setItem("cashraaga-analysis", JSON.stringify(data));
-    } else {
-      window.localStorage.removeItem("cashraaga-analysis");
-    }
-  };
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
 
   return (
     <CashRaagaContext.Provider value={{ analysis, setAnalysis }}>
