@@ -18,6 +18,7 @@ export default function AdvisorPage() {
   const [rate, setRate] = useState<string>("12");
   const [tenureYears, setTenureYears] = useState<string>("3");
   const [oneTimeExpense, setOneTimeExpense] = useState<string>("");
+  const [monthlyExpenses, setMonthlyExpenses] = useState<string>("");
 
   const [emi, setEmi] = useState<number | null>(null);
   const [totalInterest, setTotalInterest] = useState<number | null>(null);
@@ -63,6 +64,7 @@ export default function AdvisorPage() {
     const annualRate = Number(rate) || 0;
     const years = Number(tenureYears) || 0;
     const upcoming = toNumber(oneTimeExpense);
+    const expenses = toNumber(monthlyExpenses);
 
     if (!monthlyIncome || !principal || !annualRate || !years) {
       setVerdict(null);
@@ -76,6 +78,7 @@ export default function AdvisorPage() {
     const months = years * 12;
     const monthlyRate = annualRate / 12 / 100;
 
+    // EMI calculation
     let emiValue: number;
     if (monthlyRate === 0) {
       emiValue = principal / months;
@@ -91,29 +94,33 @@ export default function AdvisorPage() {
     setTotalInterest(interestPaid);
     setTotalPayable(totalPaid);
 
+    // New affordability logic including monthly expenses
     const totalEmiAfter = currentEmi + emiValue;
+    const totalOutflow = totalEmiAfter + expenses; // EMIs + fixed expenses
+    const stressShare = (totalOutflow / monthlyIncome) * 100;
     const emiShare = (totalEmiAfter / monthlyIncome) * 100;
 
     let verdictResult: VerdictType = "comfortable";
     let verdictNote = "";
 
-    if (emiShare <= 30) {
+    if (stressShare <= 30) {
       verdictResult = "comfortable";
-      verdictNote =
-        "EMIs stay within ~30% of your income. This is usually considered comfortable if your job is stable.";
-    } else if (emiShare <= 45) {
+      verdictNote = `EMIs take ~${emiShare.toFixed(
+        0
+      )}% of your income, even after covering your usual monthly expenses. This is usually considered comfortable if your job is stable.`;
+    } else if (stressShare <= 45) {
       verdictResult = "stretch";
       verdictNote =
-        "Total EMIs will eat 30–45% of your income. Manageable, but you should control lifestyle spends and keep an emergency fund.";
+        "Your EMIs plus regular expenses will take about 30–45% of your income. Manageable, but you should control lifestyle spends and keep an emergency fund.";
     } else {
       verdictResult = "risky";
       verdictNote =
-        "Total EMIs will cross 45% of your income. This is risky, especially if you have dependents or unstable income.";
+        "Your EMIs plus regular expenses will eat more than 45% of your income. This is risky, especially if you have dependents or unstable income.";
     }
 
     if (upcoming > 0) {
       verdictNote +=
-        " You also mentioned an upcoming one-time expense. Keep that in a separate buffer and avoid using credit to fund it fully.";
+        " You also mentioned an upcoming one-time expense. Keep that in a separate buffer and avoid funding it fully on credit.";
     }
 
     setVerdict(verdictResult);
@@ -185,7 +192,7 @@ export default function AdvisorPage() {
               <p className="mt-2 text-sm text-slate-400 max-w-md">
                 Quickly sanity-check a new loan, big purchase, vacation or
                 tuition fee. We&apos;ll estimate the EMI and show how hard it
-                will hit your monthly cash-flow.
+                will hit your monthly cash-flow after your regular expenses.
               </p>
             </div>
 
@@ -216,6 +223,18 @@ export default function AdvisorPage() {
                     placeholder="e.g. 15,000"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-300">
+                  Monthly expenses (rent, bills, groceries) (₹)
+                </label>
+                <input
+                  value={monthlyExpenses}
+                  onChange={(e) => setMonthlyExpenses(e.target.value)}
+                  className="w-full rounded-xl bg-slate-950/60 border border-slate-700 px-3 py-2 text-xs text-slate-100 outline-none focus:border-emerald-400"
+                  placeholder="e.g. 25,000"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -283,9 +302,9 @@ export default function AdvisorPage() {
 
             {emi == null ? (
               <p className="text-xs text-slate-500">
-                Fill in your income, existing EMIs and loan details, then hit
-                &quot;Check affordability&quot; to see the impact on your
-                monthly cash-flow.
+                Fill in your income, existing EMIs, usual monthly expenses and
+                loan details, then hit &quot;Check affordability&quot; to see
+                the impact on your monthly cash-flow.
               </p>
             ) : (
               <>
