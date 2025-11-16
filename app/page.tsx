@@ -170,8 +170,7 @@ export default function Home() {
         throw new Error(
           data?.error || `Backend error (status ${res.status})`
         );
-      }
-
+    
       setResult(data as ApiResult);
     } catch (err: any) {
       console.error("Analyze error:", err);
