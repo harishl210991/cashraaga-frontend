@@ -26,11 +26,12 @@ function riskColor(level: "low" | "medium" | "high") {
 }
 
 const FutureBlock: React.FC = () => {
-  const { data } = useCashRaaga(); // or { summary, future_block } depending on your provider
+  const { analysis } = useCashRaaga(); // ✅ correct: analysis, not data
 
-  if (!data || !data.future_block) return null;
+  // if no analysis yet or backend hasn't sent future_block
+  if (!analysis || !analysis.future_block) return null;
 
-  const fb = data.future_block;
+  const fb = analysis.future_block;
   const probPct = Math.round(fb.overspend_risk.probability * 100);
 
   return (
