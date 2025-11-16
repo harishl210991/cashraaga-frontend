@@ -135,7 +135,7 @@ export default function Home() {
     setError("");
   };
 
-      const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!file) {
@@ -175,30 +175,13 @@ export default function Home() {
       }
 
       setResult(data as ApiResult);
-      // if you're using the global context:
-      // setAnalysis(data);
+      setAnalysis(data); // persist globally + localStorage (for advisor page)
     } catch (err: any) {
       console.error("Analyze error:", err);
       setError(
         typeof err?.message === "string"
           ? err.message
           : "Could not reach the analysis server. Please try again in a moment."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Backend error");
-      }
-
-      setResult(data as ApiResult);
-      setAnalysis(data); // persist globally + localStorage
-    } catch (err) {
-      console.error(err);
-      setError(
-        "Could not reach the analysis server. Please try again in a moment."
       );
     } finally {
       setLoading(false);
@@ -392,7 +375,7 @@ export default function Home() {
                       ₹{fmt(summary.safe_daily_spend)}
                     </p>
                   </div>
-                </div>            
+                </div>
               </>
             ) : (
               <p className="text-xs text-slate-500">
