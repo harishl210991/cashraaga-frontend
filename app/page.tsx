@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import FutureBlock from "./components/FutureBlock";
+import { useCashRaaga } from "./CashRaagaProvider";
 import Link from "next/link";
 import {
   BarChart,
