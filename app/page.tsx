@@ -135,7 +135,7 @@ export default function Home() {
     setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
       setError("Upload a statement file first.");
@@ -150,10 +150,40 @@ export default function Home() {
     formData.append("file", file);
 
     try {
+      console.log("API_BASE used in this build:", API_BASE);
+
       const res = await fetch(`${API_BASE}/analyze`, {
         method: "POST",
         body: formData,
       });
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // if backend returns non-JSON or nothing
+        throw new Error(`Could not parse server response (status ${res.status})`);
+      }
+
+      if (!res.ok) {
+        // show backend error text if it exists
+        throw new Error(
+          data?.error || `Backend error (status ${res.status})`
+        );
+      }
+
+      setResult(data as ApiResult);
+    } catch (err: any) {
+      console.error("Analyze error:", err);
+      setError(
+        typeof err?.message === "string"
+          ? err.message
+          : "Could not reach the analysis server. Please try again in a moment."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
       const data = await res.json();
       if (!res.ok) {
